@@ -1,0 +1,517 @@
+/* 小美有一个数字 n，小美打算按照以下规则对 n, 进行操作: ·如果 n 是偶数，让 n 除以 2; ·否则，让 n乘以3再加 1。 小美想知道，在操作k次后，n 会变成多少。 输入描述 输入一行两个整数n,k(2 ≤n≤ 1e18,0 ≤k≤ 1e18) 输出描述 输出 n 操作 k次后的结果。*/
+#include <bits/stdc++.h>
+using namespace std;
+using int64 = long long;
+using i128 = __int128_t;
+using u128 = __uint128_t;
+
+// 将 __int128 转成字符串输出
+string toString128(i128 x) {
+    if (x == 0) return "0";
+    bool neg = false;
+    if (x < 0) { neg = true; x = -x; }
+    string s;
+    while (x != 0) {
+        int digit = (int)(x % 10);
+        s.push_back('0' + digit);
+        x /= 10;
+    }
+    if (neg) s.push_back('-');
+    reverse(s.begin(), s.end());
+    return s;
+}
+
+// 规则函数 f
+i128 nextVal(i128 n) {
+    if ((n & 1) == 0) { // even
+        return n / 2;
+    } else {
+        return n * 3 + 1;
+    }
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    unsigned long long nn;
+    unsigned long long kk;
+    if (!(cin >> nn >> kk)) return 0;
+
+    i128 n = (i128) nn;
+    unsigned long long k = kk;
+
+    // seq[i] = value after i steps (seq[0] == initial n)
+    vector<i128> seq;
+    seq.reserve(1000000); // 预留一些空间（提升效率）
+
+    // 使用 map<__int128, index> 记录首次出现的位置
+    map<i128, long long> firstPos;
+
+    seq.push_back(n);
+    firstPos[n] = 0;
+
+    unsigned long long rem = k;
+
+    // 如果 k == 0，直接输出初始值
+    if (rem == 0) {
+        cout << toString128(n) << "\n";
+        return 0;
+    }
+
+    while (rem > 0) {
+        i128 cur = seq.back();
+        i128 nxt = nextVal(cur);
+        rem--; // 我们马上应用这一步
+
+        auto it = firstPos.find(nxt);
+        if (it != firstPos.end()) {
+            // 找到环
+            long long s = it->second;          // 环起点索引
+            long long tplus1 = (long long)seq.size(); // 当前 seq.size() == 已有值数(步骤数已完成前的一项)
+            long long L = tplus1 - s;          // 环长度
+            // 剩余 rem 步将循环在长度 L 上
+            long long offset = 0;
+            if (L > 0) offset = (long long)(rem % (unsigned long long)L);
+            long long targetIdx = s + offset;
+            // 输出 seq[targetIdx]
+            cout << toString128(seq[targetIdx]) << "\n";
+            return 0;
+        } else {
+            // 未见过，将 nxt 加入序列
+            seq.push_back(nxt);
+            firstPos[nxt] = (long long)seq.size() - 1;
+            if (rem == 0) {
+                // 刚好做完 k 步，输出当前最后值
+                cout << toString128(nxt) << "\n";
+                return 0;
+            }
+            // 继续循环
+        }
+    }
+
+    // 如果循环退出（一般会在上面返回），保险返回 seq.back()
+    cout << toString128(seq.back()) << "\n";
+    return 0;
+}
+/*在 仅依赖 numpy / pandas 的前提下，实现 Fisher 线性判别分析 (LDA) 二分类，并对测试集输出预测标签。 */
+import sys
+import json
+import numpy as np
+import pandas as pd
+
+def fisher_lda(train, test):
+    train = np.array(train)
+    test = np.array(test)
+
+    # 特征和标签
+    X = train[:, :-1]
+    y = train[:, -1].astype(int)
+    
+    # 计算类别均值
+    mu0 = X[y == 0].mean(axis=0)
+    mu1 = X[y == 1].mean(axis=0)
+
+    # 计算类内散度矩阵 Sw
+    Sw = np.zeros((X.shape[1], X.shape[1]))
+    for c, mu in [(0, mu0), (1, mu1)]:
+        Xc = X[y == c]
+        Sw += np.dot((Xc - mu).T, (Xc - mu))
+
+    # 加正则避免奇异
+    Sw_reg = Sw + 1e-6 * np.eye(Sw.shape[0])
+
+    # 投影向量 w
+    w = np.linalg.inv(Sw_reg).dot(mu1 - mu0)
+
+    # 将样本投影到一维
+    z_train = X.dot(w)
+    m0, m1 = z_train[y == 0].mean(), z_train[y == 1].mean()
+
+    # 对测试集预测
+    preds = []
+    for x in test:
+        z = np.dot(w, x)
+        # 谁更近归谁类
+        if abs(z - m1) < abs(z - m0):
+            preds.append(1)
+        else:
+            preds.append(0)
+    return preds
+
+
+if __name__ == "__main__":
+    # 读取一行 JSON 输入
+    data = json.loads(sys.stdin.read())
+    train, test = data["train"], data["test"]
+    preds = fisher_lda(train, test)
+    # 输出 JSON
+    print(json.dumps(preds))
+/*小美从一个原始的连续数列(各元素互不相同，且恰好是某个区间内的所有整数)中丢失了一些数字，剩余元素按原顺序形成了.
+
+个长度为 n, 的数组{a1,a2,···,an}。
+
+选定区间,后，一定可以通过插入若干元素，使得子数组中的元素恰好构成从 min(a,…,a,)到 max(a1……,an)的连续整数序列。我们称这个子数组的权值为:插入的最少元素数量。
+
+请你计算数组中所有子数组的权值之和。
+
+输入描述
+
+第一行输入一个整数 n(1 ≤ n ≤ 2 x10^5)表示数组长度。
+
+第二行输入 n, 个互不相同的整数{a1,a2,·..,an}(1 ≦ ai≦ 10^6)表示数组元素。
+
+输出描述
+
+输出一个整数，表示数组中所有子数组的权值之和。
+
+示例:
+
+输入：
+
+3
+
+3 1 2
+
+输出
+
+1
+
+输入
+
+4
+
+2 5 3 8
+
+输出
+
+14 */
+import sys
+
+def solve():
+    """
+    主解决函数
+    """
+    try:
+        n_str = sys.stdin.readline()
+        if not n_str:
+            return
+        n = int(n_str)
+        a = list(map(int, sys.stdin.readline().split()))
+    except (IOError, ValueError):
+        return
+
+    # 辅助函数：使用单调栈计算贡献和
+    def calculate_contribution_sum(arr, compare_op):
+        """
+        使用单调栈计算每个元素作为最大值或最小值的贡献总和
+        
+        :param arr: 输入数组
+        :param compare_op: 比较函数 (lambda x, y: x < y 用于最大值, lambda x, y: x > y 用于最小值)
+        :return: 贡献总和
+        """
+        n_len = len(arr)
+        left = [-1] * n_len
+        right = [n_len] * n_len
+        stack = []
+
+        # 计算左边界
+        for i in range(n_len):
+            while stack and compare_op(arr[stack[-1]], arr[i]):
+                stack.pop()
+            if stack:
+                left[i] = stack[-1]
+            stack.append(i)
+
+        # 计算右边界
+        stack = []
+        for i in range(n_len - 1, -1, -1):
+            while stack and compare_op(arr[stack[-1]], arr[i]):
+                stack.pop()
+            if stack:
+                right[i] = stack[-1]
+            stack.append(i)
+        
+        # 计算总贡献
+        total_sum = 0
+        for i in range(n_len):
+            count = (i - left[i]) * (right[i] - i)
+            total_sum += arr[i] * count
+        
+        return total_sum
+
+    # 1. 计算所有子数组最大值之和
+    # 对于最大值，我们要找的是第一个更大的元素，所以当栈顶元素 < 当前元素时弹出
+    sum_max = calculate_contribution_sum(a, lambda x, y: x < y)
+    
+    # 2. 计算所有子数组最小值之和
+    # 对于最小值，我们要找的是第一个更小的元素，所以当栈顶元素 > 当前元素时弹出
+    sum_min = calculate_contribution_sum(a, lambda x, y: x > y)
+
+    # 3. 计算所有子数组的 (j - i) 之和
+    # weight = (max - min + 1) - (length) = (max - min) - (length - 1)
+    # length - 1 = (j - i + 1) - 1 = j - i
+    sum_len_diff = 0
+    for i in range(n):
+        # 对于固定的i, j可以从i到n-1, j-i的值为0, 1, ..., n-1-i
+        # 求和 0 + 1 + ... + (n-1-i)
+        m = n - 1 - i
+        sum_len_diff += m * (m + 1) // 2
+
+    # 最终结果
+    result = sum_max - sum_min - sum_len_diff
+    print(result)
+
+# 在本地运行或提交到某些平台时，可能需要这种循环读取方式
+if __name__ == "__main__":
+    solve()
+/*给定一棵以节点1为根的有 几个节点的树，每个节点i有一个正整数权值wi:，初始被涂成黑色或白色。你需要支持以下两种操
+
+1.翻转节点 x 的颜色(黑色变白色，白色变黑色);
+
+2.查询从根节点1到节点: 的路径上所有黑色节点的权值的最小公倍数(若路径上无黑色节点，则记为 1)。
+
+【名词解释】
+
+最小公倍数:最小公倍数是能够被给定整数集合中每个整数整除的最小正整数，记为lcm。
+
+输入描述第一行输入两个整数n 和 q(1 ≤ n,q ≦ 2 x 10^5)，分别表示树的节点数量和操作数量。第二行输入 n, 个整数 w1,2,...,wn(1 ≤ wi < 100)，分别表示节点 1 到节点n,的权值。第三行输入一个长度为 n、仅由字符 B和 W 构成的字符串 c，其中 ci= B表示节点之初始化为黑色，ci= W表示初始化为白色。接下来n -1行，每行输入两个整数ui,vi和 “(1 ≤ ui,vi< n;ui ≠ vi)，表示一条连接节点“;和节点”的无向边。保证这n,个节点构成一棵根为 1的树。
+
+接下来q行，每行输入两个整数t和 x(t ∈{1,2},1 ≤ x≤n)，表示一次操作:
+
+1.当t=1时，执行翻转操作;
+
+2.当t= 2 时，执行查询操作。
+
+输出描述
+
+对于每次查询操作，在一行中输出一个整数，表示对应路径上黑色节点权值的最小公倍数对(1e9+ 7)取模后的结果.
+示例输入：
+5 5
+2 3 4 5 6
+BWBWB
+1 2
+1 3
+3 4
+3 5
+2 4
+1 3
+2 4
+1 1
+2 5
+输出：
+4
+2
+6 */
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAXN = 2e5 + 5;
+
+int n, q;
+int w[MAXN];
+char color[MAXN];
+vector<int> adj[MAXN];
+
+// HLD相关变量
+int parent[MAXN], depth[MAXN], size_[MAXN], heavy[MAXN], head[MAXN], pos[MAXN];
+int current_pos;
+
+// 线段树结构
+struct SegmentTree {
+    vector<long long> tree;
+    int n;
+
+    SegmentTree(int size) : n(size) {
+        tree.resize(4 * n, 1);
+    }
+
+    void build(int node, int l, int r, const vector<long long>& arr) {
+        if (l == r) {
+            tree[node] = arr[l];
+            return;
+        }
+        int mid = (l + r) / 2;
+        build(2 * node, l, mid, arr);
+        build(2 * node + 1, mid + 1, r, arr);
+        tree[node] = lcm(tree[2 * node], tree[2 * node + 1]);
+    }
+
+    void update(int node, int l, int r, int pos, long long val) {
+        if (l == r) {
+            tree[node] = val;
+            return;
+        }
+        int mid = (l + r) / 2;
+        if (pos <= mid) {
+            update(2 * node, l, mid, pos, val);
+        } else {
+            update(2 * node + 1, mid + 1, r, pos, val);
+        }
+        tree[node] = lcm(tree[2 * node], tree[2 * node + 1]);
+    }
+
+    long long query(int node, int l, int r, int ql, int qr) {
+        if (qr < l || ql > r) return 1;
+        if (ql <= l && r <= qr) return tree[node];
+        int mid = (l + r) / 2;
+        long long left = query(2 * node, l, mid, ql, qr);
+        long long right = query(2 * node + 1, mid + 1, r, ql, qr);
+        return lcm(left, right);
+    }
+
+private:
+    long long gcd(long long a, long long b) {
+        while (b) {
+            a %= b;
+            swap(a, b);
+        }
+        return a;
+    }
+
+    long long pow_mod(long long base, long long exp) {
+        long long result = 1;
+        base %= MOD;
+        while (exp > 0) {
+            if (exp % 2 == 1) {
+                result = (result * base) % MOD;
+            }
+            base = (base * base) % MOD;
+            exp /= 2;
+        }
+        return result;
+    }
+
+    long long lcm(long long a, long long b) {
+        if (a == 0 || b == 0) return 0;
+        long long g = gcd(a, b);
+        a %= MOD;
+        b %= MOD;
+        long long inv_g = pow_mod(g, MOD - 2);
+        return ((a * b) % MOD) * inv_g % MOD;
+    }
+};
+
+// HLD相关函数
+int dfs_size(int u) {
+    size_[u] = 1;
+    int max_size = 0;
+    heavy[u] = -1;
+    for (int v : adj[u]) {
+        if (v != parent[u]) {
+            parent[v] = u;
+            depth[v] = depth[u] + 1;
+            size_[u] += dfs_size(v);
+            if (size_[v] > max_size) {
+                max_size = size_[v];
+                heavy[u] = v;
+            }
+        }
+    }
+    return size_[u];
+}
+
+void dfs_hld(int u, int h) {
+    head[u] = h;
+    pos[u] = current_pos++;
+    if (heavy[u] != -1) {
+        dfs_hld(heavy[u], h);
+        for (int v : adj[u]) {
+            if (v != parent[u] && v != heavy[u]) {
+                dfs_hld(v, v);
+            }
+        }
+    }
+}
+
+void init_hld() {
+    parent[1] = 0;
+    depth[1] = 0;
+    dfs_size(1);
+    current_pos = 0;
+    dfs_hld(1, 1);
+}
+
+// 查询从根到x的路径上黑色节点的LCM
+long long query_path(int x, SegmentTree& seg) {
+    long long res = 1;
+    while (x != 0) {
+        int l = pos[head[x]];
+        int r = pos[x];
+        res = [&]() {
+            long long a = res;
+            long long b = seg.query(1, 0, n - 1, l, r);
+            if (a == 0 || b == 0) return 0LL;
+            long long g = __gcd(a, b);
+            a %= MOD;
+            b %= MOD;
+            long long inv_g = 1;
+            long long exp = MOD - 2;
+            long long base = g % MOD;
+            while (exp > 0) {
+                if (exp % 2 == 1) {
+                    inv_g = (inv_g * base) % MOD;
+                }
+                base = (base * base) % MOD;
+                exp /= 2;
+            }
+            return ((a * b) % MOD) * inv_g % MOD;
+        }();
+        x = parent[head[x]];
+    }
+    return res;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    cin >> n >> q;
+    for (int i = 1; i <= n; ++i) {
+        cin >> w[i];
+    }
+    cin >> (color + 1);
+
+    for (int i = 0; i < n - 1; ++i) {
+        int u, v;
+        cin >> u >> v;
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    init_hld();
+
+    vector<long long> arr(n, 1);
+    for (int i = 1; i <= n; ++i) {
+        if (color[i] == 'B') {
+            arr[pos[i]] = w[i] % MOD;
+        } else {
+            arr[pos[i]] = 1;
+        }
+    }
+
+    SegmentTree seg(n);
+    seg.build(1, 0, n - 1, arr);
+
+    while (q--) {
+        int t, x;
+        cin >> t >> x;
+        if (t == 1) {
+            // 翻转节点x的颜色
+            if (color[x] == 'B') {
+                color[x] = 'W';
+                seg.update(1, 0, n - 1, pos[x], 1);
+            } else {
+                color[x] = 'B';
+                seg.update(1, 0, n - 1, pos[x], w[x] % MOD);
+            }
+        } else {
+            // 查询路径LCM
+            long long ans = query_path(x, seg);
+            cout << ans << '\n';
+        }
+    }
+
+    return 0;
+}
